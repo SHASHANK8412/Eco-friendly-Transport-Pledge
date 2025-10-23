@@ -1,0 +1,899 @@
+import { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+
+export default function LoginPage() {
+  const { user, signInWithGoogle, signUpWithEmail, signInWithEmail } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [error, setError] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+  
+  // Form data
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    displayName: '',
+    phoneNumber: '',
+    organization: ''
+  });
+  
+  useEffect(() => {
+    // Redirect if user is already logged in
+    if (user) {
+      // Reset signing in state when user is available
+      setIsSigningIn(false);
+      // Navigate to dashboard or redirected path
+      navigate(location.state?.from?.pathname || '/dashboard');
+    }
+  }, [user, navigate, location]);
+  
+  // Event handlers
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (isSigningIn) return;
+
+    setIsSigningIn(true);
+    setError('');
+
+    try {
+      if (isSignUp) {
+        // Validate passwords match
+        if (formData.password !== formData.confirmPassword) {
+          throw new Error('Passwords do not match');
+        }
+
+        // Validate required fields
+        if (!formData.displayName?.trim()) {
+          throw new Error('Please enter your name');
+        }
+
+        await signUpWithEmail(formData.email, formData.password, formData.displayName);
+        // The user state will be updated by the onAuthStateChanged listener
+        // which will trigger the useEffect to redirect
+      } else {
+        await signInWithEmail(formData.email, formData.password);
+        // The user state will be updated by the onAuthStateChanged listener
+        // which will trigger the useEffect to redirect
+      }
+      
+      // We don't reset isSigningIn here because we want the button to show 
+      // "Signing in..." until the redirect happens in the useEffect
+      
+    } catch (err) {
+      setError(err.message);
+      setIsSigningIn(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (isSigningIn) return;
+    
+    setIsSigningIn(true);
+    setError('');
+
+    try {
+      await signInWithGoogle();
+      // The user state will be updated by the onAuthStateChanged listener
+      // which will trigger the useEffect to redirect
+      
+      // We don't reset isSigningIn here because we want the button to show 
+      // "Signing in..." until the redirect happens in the useEffect
+    } catch (err) {
+      setError(err.message);
+      setIsSigningIn(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user && !showAdditionalForm) {
+      // For sign-up flow, show additional form; for sign-in, redirect directly
+      if (isSignUp) {
+        setShowAdditionalForm(true);
+      } else {
+        const destination = location.state?.from?.pathname || '/dashboard';
+        navigate(destination, { replace: true });
+      }
+    }
+  }, [user, navigate, location, isSignUp, showAdditionalForm]);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <div className="flex justify-center">
+            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            </div>
+          </div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            {isSignUp ? 'Create your account' : 'Welcome back'}
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            {isSignUp 
+              ? 'Join EcoPledge and start making a difference today'
+              : 'Sign in to continue your environmental journey'
+            }
+          </p>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
+    if (isSigningIn) return;
+    
+    setIsSigningIn(true);
+    setError('');
+    
+    try {
+      if (isSignUp) {
+        // Validate passwords match
+        if (formData.password !== formData.confirmPassword) {
+          setError('Passwords do not match');
+          setIsSigningIn(false);
+          return;
+        }
+        
+        // Validate password strength
+        if (formData.password.length < 6) {
+          setError('Password must be at least 6 characters long');
+          setIsSigningIn(false);
+          return;
+        }
+
+        // Validate display name
+        if (!formData.displayName.trim()) {
+          setError('Please enter your name');
+          setIsSigningIn(false);
+          return;
+        }
+        
+        console.log('Attempting to sign up with email...');
+        const user = await signUpWithEmail(formData.email, formData.password, formData.displayName);
+        
+        // Update user profile
+        await FirebaseService.updateUser(user.uid, {
+          displayName: formData.displayName,
+          phoneNumber: formData.phoneNumber,
+          organization: formData.organization,
+          role: formData.role,
+          updatedAt: new Date().toISOString()
+        });
+        
+        console.log('Sign up and profile creation successful');
+        // Redirect to dashboard
+        navigate('/dashboard', { replace: true });
+      } else {
+        console.log('Attempting to sign in with email...');
+        const user = await signInWithEmail(formData.email, formData.password);
+        console.log('Sign in successful:', user);
+        // Navigation will happen automatically via useEffect
+      }
+    } catch (error) {
+      console.error('Authentication error:', error);
+      setIsSigningIn(false);
+      
+      let errorMessage = '';
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered. Please sign in instead.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak. Please use a stronger password.';
+      } else if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email. Please sign up first.';
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password. Please try again.';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed attempts. Please try again later.';
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else {
+        errorMessage = error.message || 'An unexpected error occurred. Please try again.';
+      }
+      
+      setError(errorMessage);
+    }
+  };
+
+  const handleGoogleAuth = async () => {
+    if (isSigningIn) return;
+    
+    setIsSigningIn(true);
+    setError('');
+    
+    try {
+      console.log(isSignUp ? 'Attempting to sign up with Google...' : 'Attempting to sign in with Google...');
+      const user = await signInWithGoogle();
+      console.log('Authentication successful:', user);
+      
+      // For Google sign-up, show additional form
+      if (isSignUp) {
+        setShowAdditionalForm(true);
+        setAuthMethod('google');
+      }
+      // Navigation will happen automatically via useEffect for sign-in
+    } catch (error) {
+      console.error('Login error:', error);
+      setIsSigningIn(false);
+      
+      let errorMessage = '';
+      
+      if (error.code === 'auth/api-key-not-valid') {
+        errorMessage = 'Firebase API key is not valid. Please contact the administrator.';
+      } else if (error.code === 'auth/operation-not-allowed') {
+        errorMessage = 'Google sign-in is not enabled for this application.';
+      } else if (error.code === 'auth/popup-blocked') {
+        errorMessage = 'Sign-in popup was blocked. Please allow popups for this site and try again.';
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        errorMessage = 'You closed the sign-in window before completing authentication.';
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else {
+        errorMessage = 'An unexpected error occurred. Please try again.';
+      }
+      
+      setError(errorMessage);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+      </div>
+    );
+  }
+
+  // Show additional form for new sign-ups
+  if (showAdditionalForm && user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div>
+            <div className="flex justify-center">
+              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+            </div>
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+              Complete Your Profile
+            </h2>
+            <p className="mt-2 text-center text-sm text-gray-600">
+              Help us personalize your environmental journey
+            </p>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+              <p className="text-sm">{error}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleEmailPasswordAuth} className="space-y-6">
+            {isSignUp && (
+              <div>
+                <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  id="displayName"
+                  name="displayName"
+                  required={isSignUp}
+                  value={formData.displayName}
+                  onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                  placeholder="Enter your full name"
+                />
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email Address
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                required
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                required
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                placeholder={isSignUp ? "Choose a strong password" : "Enter your password"}
+              />
+            </div>
+
+            {isSignUp && (
+              <>
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                    Confirm Password
+                  </label>
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    required={isSignUp}
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                    placeholder="Confirm your password"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    id="phoneNumber"
+                    name="phoneNumber"
+                    value={formData.phoneNumber}
+                    onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                    placeholder="Optional"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="organization" className="block text-sm font-medium text-gray-700">
+                    Organization
+                  </label>
+                  <input
+                    type="text"
+                    id="organization"
+                    name="organization"
+                    value={formData.organization}
+                    onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                    placeholder="Optional"
+                  />
+                </div>
+              </>
+            )}
+
+            <div>
+              <button
+                type="submit"
+                disabled={isSigningIn}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isSigningIn 
+                  ? (isSignUp ? 'Creating account...' : 'Signing in...') 
+                  : (isSignUp ? 'Sign Up' : 'Sign In')
+                }
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <button
+                onClick={handleGoogleAuth}
+                disabled={isSigningIn}
+                className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                  <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                  <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                  <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                  <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+                </svg>
+                {isSigningIn ? 'Signing in...' : 'Continue with Google'}
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-6 text-center text-sm">
+            <span className="text-gray-600">
+              {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="ml-1 font-medium text-green-600 hover:text-green-500 focus:outline-none focus:underline transition-colors"
+            >
+              {isSignUp ? 'Sign In' : 'Sign Up'}
+            </button>
+          </div>
+                onChange={handleFormChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                placeholder="e.g., New York, USA"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="interests" className="block text-sm font-medium text-gray-700">
+                Environmental Interests
+              </label>
+              <select
+                id="interests"
+                name="interests"
+                required
+                value={userFormData.interests}
+                onChange={handleFormChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+              >
+                <option value="">Select your main interest</option>
+                <option value="renewable-energy">Renewable Energy</option>
+                <option value="sustainable-transport">Sustainable Transportation</option>
+                <option value="waste-reduction">Waste Reduction</option>
+                <option value="water-conservation">Water Conservation</option>
+                <option value="wildlife-protection">Wildlife Protection</option>
+                <option value="climate-action">Climate Action</option>
+                <option value="organic-farming">Organic Farming</option>
+                <option value="green-building">Green Building</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="environmentalGoals" className="block text-sm font-medium text-gray-700">
+                Your Environmental Goals
+              </label>
+              <textarea
+                id="environmentalGoals"
+                name="environmentalGoals"
+                rows={3}
+                required
+                value={userFormData.environmentalGoals}
+                onChange={handleFormChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                placeholder="What do you hope to achieve environmentally?"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSigningIn}
+              className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isSigningIn ? 'Saving Profile...' : 'Complete Registration'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  useEffect(() => {
+    if (user) {
+      navigate(location.state?.from?.pathname || '/dashboard');
+    }
+  }, [user, navigate, location]);
+
+  // Event handlers
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (isSigningIn) return;
+
+    setIsSigningIn(true);
+    setError('');
+
+    try {
+      if (isSignUp) {
+        // Validate passwords match
+        if (formData.password !== formData.confirmPassword) {
+          throw new Error('Passwords do not match');
+        }
+
+        // Validate required fields
+        if (!formData.displayName?.trim()) {
+          throw new Error('Please enter your name');
+        }
+
+        await signUpWithEmail(formData.email, formData.password, formData.displayName);
+      } else {
+        await signInWithEmail(formData.email, formData.password);
+      }
+    } catch (err) {
+      setError(err.message);
+      setIsSigningIn(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (isSigningIn) return;
+    
+    setIsSigningIn(true);
+    setError('');
+
+    try {
+      await signInWithGoogle();
+    } catch (err) {
+      setError(err.message);
+      setIsSigningIn(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <div className="flex justify-center">
+            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            </div>
+          </div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            {isSignUp ? 'Create your account' : 'Welcome back'}
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            {isSignUp 
+              ? 'Join EcoPledge and start making a difference today'
+              : 'Sign in to continue your environmental journey'
+            }
+          </p>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
+
+        <div className="mt-8 space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {isSignUp && (
+              <div>
+                <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  id="displayName"
+                  name="displayName"
+                  autoComplete="name"
+                  required={isSignUp}
+                  value={formData.displayName}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                  placeholder="Enter your full name"
+                />
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email Address
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                autoComplete="email"
+                required
+                value={formData.email}
+                onChange={handleInputChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                autoComplete={isSignUp ? "new-password" : "current-password"}
+                required
+                value={formData.password}
+                onChange={handleInputChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                placeholder={isSignUp ? "Create a strong password" : "Enter your password"}
+              />
+            </div>
+
+            {isSignUp && (
+              <>
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                    Confirm Password
+                  </label>
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    autoComplete="new-password"
+                    required={isSignUp}
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                    placeholder="Confirm your password"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    id="phoneNumber"
+                    name="phoneNumber"
+                    autoComplete="tel"
+                    value={formData.phoneNumber}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                    placeholder="Optional"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="organization" className="block text-sm font-medium text-gray-700">
+                    Organization
+                  </label>
+                  <input
+                    type="text"
+                    id="organization"
+                    name="organization"
+                    autoComplete="organization"
+                    value={formData.organization}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                    placeholder="Optional"
+                  />
+                </div>
+              </>
+            )}
+
+            <div>
+              <button
+                type="submit"
+                disabled={isSigningIn}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isSigningIn 
+                  ? (isSignUp ? 'Creating account...' : 'Signing in...') 
+                  : (isSignUp ? 'Create Account' : 'Sign In')
+                }
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-gray-50 text-gray-500">Or continue with</span>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <button
+                onClick={handleGoogleSignIn}
+                disabled={isSigningIn}
+                className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                  <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                  <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                  <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                  <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+                </svg>
+                {isSigningIn ? 'Signing in...' : 'Continue with Google'}
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-6 text-center text-sm">
+            <span className="text-gray-600">
+              {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="ml-1 font-medium text-green-600 hover:text-green-500 focus:outline-none focus:underline transition-colors"
+            >
+              {isSignUp ? 'Sign In' : 'Sign Up'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email Address
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                required
+                value={emailFormData.email}
+                onChange={handleEmailFormChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                placeholder="Enter your email"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                required
+                value={emailFormData.password}
+                onChange={handleEmailFormChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                placeholder={isSignUp ? "Create a password (min 6 characters)" : "Enter your password"}
+              />
+            </div>
+
+            {isSignUp && (
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                  Confirm Password
+                </label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  required
+                  value={emailFormData.confirmPassword}
+                  onChange={handleEmailFormChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                  placeholder="Confirm your password"
+                />
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isSigningIn}
+              className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isSigningIn 
+                ? (isSignUp ? 'Creating account...' : 'Signing in...') 
+                : (isSignUp ? 'Sign Up' : 'Sign In')
+              }
+            </button>
+          </form>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-gray-50 text-gray-500">Or continue with</span>
+            </div>
+          </div>
+
+          {/* Google Sign-In Button */}
+          <button
+            onClick={handleGoogleAuth}
+            disabled={isSigningIn}
+            type="button"
+            className="group relative w-full flex justify-center py-3 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+          >
+            <span className="absolute left-0 inset-y-0 flex items-center pl-3">
+              {isSigningIn ? (
+                <svg className="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  />
+                </svg>
+              )}
+            </span>
+            Google
+          </button>
+          
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-gray-50 text-gray-500">
+                {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+              </span>
+            </div>
+          </div>
+          
+          <button
+            onClick={() => {
+              setIsSignUp(!isSignUp);
+              setError('');
+              setEmailFormData({ email: '', password: '', confirmPassword: '' });
+            }}
+            type="button"
+            className="w-full text-center py-2 px-4 text-sm font-medium text-green-600 hover:text-green-500 transition-colors"
+          >
+            {isSignUp ? 'Sign in to existing account' : 'Create new account'}
+          </button>
+          
+          {isDevelopmentMode && (
+            <div className="text-center mt-4 pt-4 border-t border-gray-200">
+              <div className="text-xs text-gray-500 mb-2">Development Mode</div>
+              <Link 
+                to="/dev-login" 
+                className="text-sm font-medium text-green-600 hover:text-green-500 transition-colors"
+              >
+                Use Development Login
+              </Link>
+            </div>
+          )}
+        </div>
+        
+        <div className="text-center">
+          <p className="text-xs text-gray-500">
+            By {isSignUp ? 'creating an account' : 'signing in'}, you agree to help protect our environment through sustainable practices.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

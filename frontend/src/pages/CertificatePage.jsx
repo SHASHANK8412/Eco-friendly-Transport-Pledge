@@ -318,41 +318,6 @@ export default function CertificatePage() {
       setIsGenerating(false);
     }
   };
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          pledgeId: pledgeId,
-          userId: user?.uid
-        }),
-      });
-
-      console.log('Certificate generation response status:', response.status);
-      
-      const data = await response.json();
-      console.log('Certificate generation response:', data);
-
-      if (!response.ok) {
-        if (response.status === 403) {
-          setError(data.message || 'You are not eligible for a certificate yet. Complete 7 consecutive daily check-ins first!');
-        } else {
-          setError(data.message || `Failed to generate certificate: ${response.statusText}`);
-        }
-        return;
-      }
-
-      if (data.success && data.downloadUrl) {
-        setDownloadUrl(data.downloadUrl);
-        alert('Certificate generated successfully! Click the download button to save it.');
-      } else {
-        setError(data.message || 'Failed to generate certificate');
-      }
-    } catch (error) {
-      console.error('Error generating certificate:', error);
-      setError(`An error occurred: ${error.message}`);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   const handlePledgeSelect = async (pledge) => {
     setSelectedPledge(pledge);

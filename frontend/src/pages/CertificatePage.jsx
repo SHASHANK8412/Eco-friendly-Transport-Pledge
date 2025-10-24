@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle, XCircle, Download, Award, Calendar } from 'lucide-react';
+import FirebaseService from '../services/firebaseService';
 
 export default function CertificatePage() {
   const { user } = useAuth();
@@ -15,7 +16,7 @@ export default function CertificatePage() {
   // API base URL - fallback to localhost if env var not set
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-  // Fetch user's pledges
+  // Fetch user's pledges from Firebase
   const { data: pledges, isLoading, error: pledgeError, refetch } = useQuery({
     queryKey: ['userPledges', user?.uid],
     queryFn: async () => {
@@ -23,53 +24,18 @@ export default function CertificatePage() {
         throw new Error('User not authenticated');
       }
 
-      console.log('Fetching pledges for user:', user.uid);
-      console.log('API URL:', API_URL);
+      console.log('Fetching pledges from Firebase for user:', user.uid);
 
       try {
-        const response = await fetch(`${API_URL}/api/pledges/user/${user.uid}`);
+        // Fetch from Firebase first
+        const allPledges = await FirebaseService.getAllPledges();
+        const userPledges = allPledges.filter(pledge => pledge.userId === user.uid);
         
-        console.log('Pledge fetch response status:', response.status);
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Error response:', errorText);
-          throw new Error(`Failed to fetch pledges: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        console.log('Fetched pledges data:', data);
-        
-        if (!data.success) {
-          throw new Error(data.message || 'Failed to fetch pledges');
-        }
-        
-        // Handle both array and object responses
-        let pledgesArray = [];
-        if (Array.isArray(data.data)) {
-          pledgesArray = data.data;
-        } else if (data.data && typeof data.data === 'object') {
-          // If it's an object, convert to array
-          pledgesArray = Object.values(data.data);
-        }
-        
-        console.log('Processed pledges array:', pledgesArray);
-        return pledgesArray;
+        console.log('Fetched pledges from Firebase:', userPledges);
+        return userPledges;
       } catch (error) {
-        console.error('Error fetching pledges:', error);
-        
-        // Create demo data for testing if API fails
-        console.log('Creating demo pledges for testing...');
-        return [
-          {
-            _id: 'demo-1',
-            name: 'Demo Pledge',
-            pledgeText: 'I pledge to use sustainable transportation daily',
-            userId: user?.uid,
-            createdAt: new Date(),
-            status: 'active'
-          }
-        ];
+        console.error('Error fetching pledges from Firebase:', error);
+        throw error;
       }
     },
     enabled: !!user?.uid,
@@ -209,29 +175,149 @@ export default function CertificatePage() {
     try {
       console.log('Generating certificate for pledge:', pledgeId);
       
-      // Check current eligibility first
-      console.log('Checking eligibility before certificate generation...');
-      try {
-        const eligibilityResponse = await fetch(`${API_URL}/api/certificates/eligibility/${user?.uid}/${pledgeId}`);
-        const eligibilityResult = await eligibilityResponse.json();
-        console.log('Eligibility check result:', eligibilityResult);
-        
-        if (!eligibilityResult.eligibility?.eligible) {
-          setError(eligibilityResult.eligibility?.message || 'You are not eligible for a certificate yet. You need 7 consecutive days of check-ins.');
-          setIsGenerating(false);
-          return;
-        }
-      } catch (eligibilityError) {
-        console.error('Error checking eligibility:', eligibilityError);
-        setError('Failed to check eligibility. Please try again.');
+      // Find the selected pledge
+      const pledge = pledges?.find(p => p.id === pledgeId);
+      if (!pledge) {
+        setError('Pledge not found');
         setIsGenerating(false);
         return;
       }
+
+      // Generate certificate directly in browser (no backend needed)
+      console.log('Generating browser-based certificate...');
       
-      // Now generate the certificate
-      const response = await fetch(`${API_URL}/api/certificates/generate`, {
-        method: 'POST',
-        headers: {
+      // Create a simple certificate HTML that can be printed or saved
+      const certificateHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Eco-Friendly Transport Pledge Certificate</title>
+          <style>
+            body {
+              font-family: 'Georgia', serif;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              min-height: 100vh;
+              margin: 0;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+            .certificate {
+              background: white;
+              padding: 60px;
+              max-width: 800px;
+              border: 20px solid #10b981;
+              border-radius: 10px;
+              box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            }
+            h1 {
+              color: #10b981;
+              font-size: 48px;
+              text-align: center;
+              margin-bottom: 20px;
+              font-weight: bold;
+            }
+            h2 {
+              color: #059669;
+              font-size: 32px;
+              text-align: center;
+              margin-bottom: 30px;
+            }
+            .content {
+              text-align: center;
+              font-size: 18px;
+              line-height: 1.8;
+              color: #1f2937;
+            }
+            .name {
+              font-size: 36px;
+              color: #059669;
+              font-weight: bold;
+              margin: 20px 0;
+              text-decoration: underline;
+            }
+            .details {
+              margin: 30px 0;
+              font-size: 16px;
+            }
+            .footer {
+              margin-top: 40px;
+              display: flex;
+              justify-content: space-between;
+              padding-top: 20px;
+              border-top: 2px solid #10b981;
+            }
+            .signature {
+              text-align: center;
+            }
+            .signature-line {
+              border-top: 2px solid #000;
+              width: 200px;
+              margin: 10px auto;
+            }
+            @media print {
+              body {
+                background: white;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="certificate">
+            <h1>🌍 Certificate of Achievement 🌍</h1>
+            <h2>Eco-Friendly Transport Pledge</h2>
+            
+            <div class="content">
+              <p>This is to certify that</p>
+              <div class="name">${pledge.name || user.displayName || user.email}</div>
+              <p>has successfully completed the Eco-Friendly Transport Pledge and demonstrated commitment to sustainable transportation.</p>
+              
+              <div class="details">
+                <p><strong>Transport Mode:</strong> ${pledge.modeOfTransport || 'Eco-Friendly Transportation'}</p>
+                <p><strong>Pledge Date:</strong> ${new Date(pledge.pledgeDate || pledge.createdAt).toLocaleDateString()}</p>
+                <p><strong>Certificate Date:</strong> ${new Date().toLocaleDateString()}</p>
+                <p><strong>Roll Number:</strong> ${pledge.rollNo || 'N/A'}</p>
+              </div>
+              
+              <p style="margin-top: 30px; font-style: italic;">
+                "Every journey towards sustainability makes a difference."
+              </p>
+            </div>
+            
+            <div class="footer">
+              <div class="signature">
+                <div class="signature-line"></div>
+                <p><strong>Program Director</strong></p>
+              </div>
+              <div class="signature">
+                <div class="signature-line"></div>
+                <p><strong>Date</strong></p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      // Open in new window for printing/saving
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(certificateHTML);
+      printWindow.document.close();
+      
+      // Auto-print dialog
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+
+      setIsGenerating(false);
+      alert('✅ Certificate generated! You can now print or save it as PDF.');
+      
+    } catch (error) {
+      console.error('Error generating certificate:', error);
+      setError('Failed to generate certificate: ' + error.message);
+      setIsGenerating(false);
+    }
+  };
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

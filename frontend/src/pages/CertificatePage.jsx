@@ -175,8 +175,8 @@ export default function CertificatePage() {
     try {
       console.log('Generating certificate for pledge:', pledgeId);
       
-      // Find the selected pledge
-      const pledge = pledges?.find(p => p.id === pledgeId);
+      // Find the selected pledge (handle both id and _id)
+      const pledge = pledges?.find(p => (p.id || p._id) === pledgeId);
       if (!pledge) {
         setError('Pledge not found');
         setIsGenerating(false);
@@ -326,9 +326,12 @@ export default function CertificatePage() {
     setDownloadUrl(null);
     setError(null);
     
+    // Use id or _id depending on the pledge source
+    const pledgeId = pledge.id || pledge._id;
+    
     // Load eligibility and progress for selected pledge
-    await checkEligibility(pledge._id);
-    await getWeeklyProgress(pledge._id);
+    await checkEligibility(pledgeId);
+    await getWeeklyProgress(pledgeId);
   };
 
   if (!user) {
@@ -381,16 +384,16 @@ export default function CertificatePage() {
             ) : (
               <select
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                value={selectedPledge?._id || ''}
+                value={selectedPledge?.id || selectedPledge?._id || ''}
                 onChange={(e) => {
-                  const pledge = pledges.find(p => p._id === e.target.value);
+                  const pledge = pledges.find(p => (p.id || p._id) === e.target.value);
                   if (pledge) handlePledgeSelect(pledge);
                 }}
               >
                 <option value="">Choose a pledge...</option>
                 {pledges.map((pledge) => (
-                  <option key={pledge._id} value={pledge._id}>
-                    {pledge.name} - {pledge.pledgeText?.substring(0, 60)}...
+                  <option key={pledge.id || pledge._id} value={pledge.id || pledge._id}>
+                    {pledge.name} - {pledge.modeOfTransport || 'Sustainable Transport'} (Date: {new Date(pledge.pledgeDate || pledge.createdAt).toLocaleDateString()})
                   </option>
                 ))}
               </select>
@@ -403,9 +406,10 @@ export default function CertificatePage() {
               {/* Pledge Info */}
               <div className="bg-gray-50 rounded-lg p-6">
                 <h3 className="font-semibold text-gray-900 mb-2">Pledge Details</h3>
-                <p className="text-gray-700 mb-2"><strong>Name:</strong> {selectedPledge.name}</p>
-                <p className="text-gray-700 mb-2"><strong>Email:</strong> {selectedPledge.email}</p>
-                <p className="text-gray-700"><strong>Pledge:</strong> {selectedPledge.pledgeText}</p>
+                <p className="text-gray-700 mb-2"><strong>Name:</strong> {selectedPledge.name || user.displayName}</p>
+                <p className="text-gray-700 mb-2"><strong>Email:</strong> {selectedPledge.email || user.email}</p>
+                <p className="text-gray-700 mb-2"><strong>Roll Number:</strong> {selectedPledge.rollNo || 'N/A'}</p>
+                <p className="text-gray-700"><strong>Pledge:</strong> I pledge to use {selectedPledge.modeOfTransport || 'sustainable transportation'} and reduce my carbon footprint</p>
               </div>
 
               {/* Eligibility Status */}

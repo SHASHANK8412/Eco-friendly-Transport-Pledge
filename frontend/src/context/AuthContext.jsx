@@ -22,9 +22,11 @@ const getAuthErrorMessage = (errorCode) => {
     'auth/user-disabled': 'This account has been disabled',
     'auth/user-not-found': 'No account found with this email',
     'auth/wrong-password': 'Incorrect password',
+    'auth/invalid-credential': 'Invalid email or password. Please check your credentials and try again.',
     'auth/popup-closed-by-user': 'Sign in was cancelled',
     'auth/popup-blocked': 'Sign in popup was blocked by your browser',
     'auth/network-request-failed': 'Network error occurred. Please check your connection',
+    'auth/too-many-requests': 'Too many failed login attempts. Please try again later or reset your password.',
     'default': 'An error occurred during authentication'
   };
   return errorMessages[errorCode] || errorMessages.default;
@@ -121,10 +123,23 @@ export function AuthProvider({ children }) {
   // Enhanced signInWithEmail with error handling
   const signInWithEmail = async (email, password) => {
     try {
+      console.log('🔐 Attempting sign in with email:', email);
+      console.log('🔑 Firebase Auth Domain:', import.meta.env.VITE_FIREBASE_AUTH_DOMAIN);
+      console.log('🔑 Firebase API Key exists:', !!import.meta.env.VITE_FIREBASE_API_KEY);
+      
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      console.log('✅ Sign in successful:', userCredential.user.email);
       return userCredential.user;
     } catch (error) {
-      console.error('Login Error:', error);
+      console.error('❌ Login Error:', error);
+      console.error('❌ Error code:', error.code);
+      console.error('❌ Error message:', error.message);
+      
+      // Check if it's an environment variable issue
+      if (!import.meta.env.VITE_FIREBASE_API_KEY) {
+        throw new Error('Firebase configuration missing. Please contact support.');
+      }
+      
       throw new Error(getAuthErrorMessage(error.code));
     }
   };

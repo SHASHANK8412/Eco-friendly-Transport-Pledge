@@ -15,6 +15,8 @@ export default function CertificatePage() {
 
   // API base URL - fallback to localhost if env var not set
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  console.log('🔧 Certificate Page - API_URL:', API_URL);
+  console.log('🔧 Environment:', import.meta.env.MODE);
 
   // Fetch user's pledges from Firebase
   const { data: pledges, isLoading, error: pledgeError, refetch } = useQuery({
@@ -48,7 +50,9 @@ export default function CertificatePage() {
     try {
       console.log('Checking eligibility for:', { pledgeId, userId: user.uid });
       
-      const response = await fetch(`${API_URL}/api/certificates/eligibility/${user.uid}/${pledgeId}`);
+      const response = await fetch(`${API_URL}/api/certificates/eligibility/${user.uid}/${pledgeId}`, {
+        credentials: 'include'
+      });
       const result = await response.json();
       
       console.log('Eligibility result:', result);
@@ -67,7 +71,9 @@ export default function CertificatePage() {
     try {
       console.log('Fetching weekly progress for:', { userId: user.uid, pledgeId });
       
-      const response = await fetch(`${API_URL}/api/certificates/progress/${user.uid}/${pledgeId}`);
+      const response = await fetch(`${API_URL}/api/certificates/progress/${user.uid}/${pledgeId}`, {
+        credentials: 'include'
+      });
       const result = await response.json();
       
       console.log('Weekly progress response:', result);
@@ -125,6 +131,7 @@ export default function CertificatePage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           userId: user.uid,
           pledgeId: pledgeId,

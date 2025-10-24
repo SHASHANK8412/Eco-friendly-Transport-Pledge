@@ -121,14 +121,16 @@ const Dashboard = () => {
     try {
       console.log('Generating AI insights with stats:', stats);
       
-      const response = await fetch('http://localhost:5000/api/ai/ecoInsights', {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_URL}/api/ai/ecoInsights`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           userId: user.uid,
-          timeframe: 'month'
+          timeframe: 'month',
+          stats: stats  // Pass current stats to AI
         }),
       });
 
@@ -147,17 +149,17 @@ const Dashboard = () => {
       }
     } catch (error) {
       console.error('Error generating AI insights:', error);
-      setInsightError(error.message);
-      
-      // Fallback insights
+      // Fallback insights with actual stats
       setAiInsights({
-        summary: `Great progress! You've made ${stats.thisMonthPledges} eco-pledges this month.`,
-        comparison: "You're contributing more to sustainability than the average person!",
+        summary: `Great progress! You've made ${stats.totalPledges} eco-pledge${stats.totalPledges !== 1 ? 's' : ''} and saved approximately ${stats.totalCO2Reduced} kg of CO₂ this month!`,
+        comparison: `You're contributing more to sustainability than the average person - great work!`,
         improvements: [
-          "Consider expanding to other eco-friendly areas",
-          "Share your journey with friends to inspire others",
-          "Set monthly carbon reduction goals"
+          "Try expanding to other areas like energy or water conservation",
+          "Encourage friends and family to join your eco-friendly journey",
+          `Set a goal to increase your pledges to ${stats.totalPledges + 3} this month`
         ],
+        milestone: stats.totalPledges >= 5 ? "🏆 Amazing! You've reached 5+ pledges!" : "🌱 Keep up the excellent work! Every small step counts!"
+      });,
         milestone: "🌱 Keep up the excellent work! Every small step counts!"
       });
       setLastUpdated(new Date());

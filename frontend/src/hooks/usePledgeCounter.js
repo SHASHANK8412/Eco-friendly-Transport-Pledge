@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import FirebaseService from '../services/firebaseService';
 
 export function usePledgeCounter() {
   // Try to get initial count from localStorage
@@ -13,30 +14,39 @@ export function usePledgeCounter() {
     let ws = null;
     let reconnectTimer = null;
     
-    // Function to fetch pledge count via REST API
-    const fetchPledgeCount = () => {
-      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/pledges/count`)
-        .then(res => {
+    // Function to fetch pledge count from Firebase
+    const fetchPledgeCount = async () => {
+      try {
+        // Try Firebase first
+        const pledges = await FirebaseService.getAllPledges();
+        const pledgeCount = pledges.length;
+        
+        setCount(pledgeCount);
+        setError(null);
+        
+        // Store the count in localStorage as a fallback
+        try {
+          localStorage.setItem('lastPledgeCount', pledgeCount.toString());
+        } catch (e) {
+          console.warn('Failed to cache pledge count', e);
+        }
+      } catch (firebaseError) {
+        console.error('Firebase error, trying backend API:', firebaseError);
+        
+        // Fallback to REST API
+        try {
+          const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/pledges/count`);
           if (!res.ok) {
             throw new Error(`HTTP error! Status: ${res.status}`);
           }
-          return res.json();
-        })
-        .then(data => {
+          const data = await res.json();
           if (data && data.count !== undefined) {
             setCount(data.count);
             setError(null);
-            
-            // Store the count in localStorage as a fallback
-            try {
-              localStorage.setItem('lastPledgeCount', data.count);
-            } catch (e) {
-              console.warn('Failed to cache pledge count', e);
-            }
+            localStorage.setItem('lastPledgeCount', data.count.toString());
           }
-        })
-        .catch(err => {
-          console.error('Error fetching pledge count:', err);
+        } catch (apiError) {
+          console.error('Error fetching pledge count from both Firebase and API:', apiError);
           setError('Failed to load real-time data');
           
           // Try to get the count from localStorage as a fallback
@@ -48,7 +58,8 @@ export function usePledgeCounter() {
           } catch (e) {
             console.warn('Failed to retrieve cached count', e);
           }
-        });
+        }
+      }
     };
 
     // Immediately fetch the count via REST API

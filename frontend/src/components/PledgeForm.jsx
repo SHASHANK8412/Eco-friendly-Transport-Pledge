@@ -174,20 +174,25 @@ export default function PledgeForm({ onSubmitSuccess }) {
       const result = await FirebaseService.createPledge(pledgeData, user);
       console.log('Pledge saved to Firebase:', result);
       
-      // Also save to backend API to ensure pledge count is updated
-      try {
-        const apiResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/pledges`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(pledgeData),
+      // Also save to backend API to ensure pledge count is updated (non-blocking with timeout)
+      const backendApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      console.log('Attempting to save to backend API:', backendApiUrl);
+      
+      // Don't wait for backend API - save in background
+      fetch(`${backendApiUrl}/api/pledges`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(pledgeData),
+      })
+        .then(response => response.json())
+        .then(apiResult => {
+          console.log('Pledge saved to backend API:', apiResult);
+        })
+        .catch(apiError => {
+          console.warn('Failed to save pledge to backend API (non-critical):', apiError.message);
         });
-        const apiResult = await apiResponse.json();
-        console.log('Pledge saved to backend API:', apiResult);
-      } catch (apiError) {
-        console.error('Failed to save pledge to backend API:', apiError);
-      }
       
       onSubmitSuccess?.(result);
       setFormData({

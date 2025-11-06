@@ -159,8 +159,6 @@ const Dashboard = () => {
           `Set a goal to increase your pledges to ${stats.totalPledges + 3} this month`
         ],
         milestone: stats.totalPledges >= 5 ? "🏆 Amazing! You've reached 5+ pledges!" : "🌱 Keep up the excellent work! Every small step counts!"
-      });,
-        milestone: "🌱 Keep up the excellent work! Every small step counts!"
       });
       setLastUpdated(new Date());
     } finally {

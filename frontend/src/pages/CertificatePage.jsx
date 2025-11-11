@@ -26,10 +26,10 @@ export default function CertificatePage() {
         throw new Error('User not authenticated');
       }
 
-      console.log('Fetching pledges from Firebase for user:', user.uid);
+      console.log('🔍 Fetching pledges from Firebase for user:', user.uid);
 
       try {
-        // Fetch user's pledges directly (more efficient)
+        // Fetch user's pledges directly (more efficient and correct)
         const userPledges = await FirebaseService.getUserPledges(user.uid);
         
         console.log('Fetched pledges from Firebase:', userPledges);

@@ -115,6 +115,19 @@ export class FirebaseService {
     }
   }
 
+  static async getAllPledges() {
+    try {
+      const snapshot = await getDocs(collection(db, 'pledges'));
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+    } catch (error) {
+      console.error('Error getting all pledges:', error);
+      throw error;
+    }
+  }
+
   static async getUserPledges(userId = null) {
     try {
       const currentUserId = userId || auth.currentUser?.uid;

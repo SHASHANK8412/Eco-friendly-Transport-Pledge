@@ -29,9 +29,8 @@ export default function CertificatePage() {
       console.log('Fetching pledges from Firebase for user:', user.uid);
 
       try {
-        // Fetch from Firebase first
-        const allPledges = await FirebaseService.getAllPledges();
-        const userPledges = allPledges.filter(pledge => pledge.userId === user.uid);
+        // Fetch user's pledges directly (more efficient)
+        const userPledges = await FirebaseService.getUserPledges(user.uid);
         
         console.log('Fetched pledges from Firebase:', userPledges);
         return userPledges;

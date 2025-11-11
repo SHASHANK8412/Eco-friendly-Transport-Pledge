@@ -135,8 +135,8 @@ export class FirebaseService {
 
       const pledgesQuery = query(
         collection(db, 'pledges'),
-        where('userId', '==', currentUserId),
-        orderBy('createdAt', 'desc')
+        where('userId', '==', currentUserId)
+        // orderBy('createdAt', 'desc') // Temporarily removed until index is created
       );
 
       const snapshot = await getDocs(pledgesQuery);
@@ -203,8 +203,8 @@ export class FirebaseService {
 
       const certificatesQuery = query(
         collection(db, 'certificates'),
-        where('userId', '==', currentUserId),
-        orderBy('createdAt', 'desc')
+        where('userId', '==', currentUserId)
+        // orderBy('createdAt', 'desc') // Temporarily removed until index is created
       );
 
       const snapshot = await getDocs(certificatesQuery);
